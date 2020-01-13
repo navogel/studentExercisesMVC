@@ -111,10 +111,76 @@ namespace StudentExercisesMVC.Controllers
         
 
         // GET: Students/Details/5
-        public ActionResult Details(int id)
+        public async Task<ActionResult> Details([FromRoute]int id)
         {
-            return View();
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"SELECT s.Id, s.FirstName, s.LastName, s.SlackHandle, c.Id AS CohortId, c.Name AS CohortName,  e.Id AS ExerciseId, e.Name, e.Language FROM Student s
+                                LEFT JOIN StudentExercise se ON se.StudentId = s.Id
+                                LEFT JOIN Exercise e ON e.Id = se.ExerciseId
+                                LEFT JOIN Cohort c ON s.CohortId = c.Id
+
+
+                                WHERE s.Id = @Id";
+                    cmd.Parameters.Add(new SqlParameter("@id", id));
+                    SqlDataReader reader = await cmd.ExecuteReaderAsync();
+
+                    Student student = null;
+
+                    while (reader.Read())
+                    {
+                        if (student == null)
+                        {
+                            student = new Student
+                            {
+                                Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                                CohortId = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                                LastName = reader.GetString(reader.GetOrdinal("LastName")),
+                                FirstName = reader.GetString(reader.GetOrdinal("FirstName")),
+                                SlackHandle = reader.GetString(reader.GetOrdinal("SlackHandle")),
+                                StudentsExercises = new List<Exercise>(),
+                                Cohort = new Cohort()
+                                {
+                                    Name = reader.GetString(reader.GetOrdinal("CohortName")),
+                                    Id = reader.GetInt32(reader.GetOrdinal("CohortId")),
+                                }
+
+                            };
+                            if (!reader.IsDBNull(reader.GetOrdinal("Name")))
+                            {
+                                student.StudentsExercises.Add(new Exercise
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("ExerciseId")),
+                                    Name = reader.GetString(reader.GetOrdinal("Name")),
+                                    Language = reader.GetString(reader.GetOrdinal("Language"))
+                                });
+                            };     
+                        }
+                        else if (!reader.IsDBNull(reader.GetOrdinal("Name")) && student != null)
+                        {
+                                student.StudentsExercises.Add(new Exercise
+                                {
+                                    Id = reader.GetInt32(reader.GetOrdinal("ExerciseId")),
+                                    Name = reader.GetString(reader.GetOrdinal("Name")),
+                                    Language = reader.GetString(reader.GetOrdinal("Language"))
+                                });  
+                        }
+                    }
+                    if (student == null)
+                    {
+                        reader.Close();
+                        return NotFound();
+                    }
+                    reader.Close();
+                    return View(student);
+                }
+            }
         }
+            
+        
 
         // GET: Students/Create
         public ActionResult Create()
