@@ -21,7 +21,7 @@ namespace StudentExercisesMVC.Models
         [Range(1, int.MaxValue, ErrorMessage = "Please enter a value bigger than {1}")]
 
         public int CohortId { get; set; }
-
+        [Display(Name = "Cohort")]
         public Cohort Cohort { get; set; }
 
 
