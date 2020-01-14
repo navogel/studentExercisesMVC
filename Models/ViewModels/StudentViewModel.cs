@@ -13,5 +13,7 @@ namespace StudentExercisesMVC.Models.ViewModels
         public List<SelectListItem> Exercises { get; set; }
 
         public List<SelectListItem> Cohorts { get; set; }
+
+        
     }
 }

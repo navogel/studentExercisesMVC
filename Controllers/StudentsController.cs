@@ -217,15 +217,40 @@ namespace StudentExercisesMVC.Controllers
         // POST: Students/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        public ActionResult Create(Student student)
         {
             try
             {
-                // TODO: Add insert logic here
+                var newStudentId = new int();
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"INSERT INTO Student 
+                                            (FirstName, 
+                                            LastName,
+                                            SlackHandle,
+                                            CohortId)
+                                            OUTPUT INSERTED.ID
+                                            VALUES 
+                                            (@firstName, @lastName, @slackHandle, @cohortId)
+                                           ";
+                        cmd.Parameters.Add(new SqlParameter("@firstName", student.FirstName));
+                        cmd.Parameters.Add(new SqlParameter("@lastName", student.LastName));
+                        cmd.Parameters.Add(new SqlParameter("@slackHandle", student.SlackHandle));
+                        cmd.Parameters.Add(new SqlParameter("@cohortId", student.CohortId));
+                        
+
+                        newStudentId = (int)cmd.ExecuteScalar();
+
+                    }
+                }
+                AddExercises(newStudentId, student.ExerciseIdList);
 
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
                 return View();
             }
@@ -336,5 +361,69 @@ namespace StudentExercisesMVC.Controllers
                 }
             }
         }
+
+        //Delete all exercises assigned to a student to make way for new exercises.
+        private void DeleteAllExercises(int studentId)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"DELETE FROM Exercises WHERE Id = @id";
+
+                        cmd.Parameters.Add(new SqlParameter("@id", studentId));
+
+                        cmd.ExecuteNonQuery();
+
+                        
+                    }
+                }
+
+
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        //helper method to add new exercises
+
+        private void AddExercises(int studentId, List<int> exerciseIds)
+        {
+            try
+            {
+                using (SqlConnection conn = Connection)
+                {
+                    conn.Open();
+                    foreach (var exerciseId in exerciseIds)
+                    using (SqlCommand cmd = conn.CreateCommand())
+                    {
+                        cmd.CommandText = @"INSERT INTO StudentExercise 
+                                            (StudentId, 
+                                            ExerciseId) 
+                                            VALUES 
+                                            (@studentId, @exerciseId)";
+                        cmd.Parameters.AddWithValue("@studentId", studentId);
+                        cmd.Parameters.AddWithValue("@exerciseId", exerciseId);
+                        
+
+                        cmd.ExecuteNonQuery();
+
+                    }
+                }
+
+                
+            }
+            catch
+            {
+                throw;
+            }
+        }
     }
+    
+    
 }
