@@ -4,9 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using StudentExercisesMVC.Models;
+using StudentExercisesMVC.Models.ViewModels;
 
 namespace StudentExercisesMVC.Controllers
 {
@@ -185,7 +187,31 @@ namespace StudentExercisesMVC.Controllers
         // GET: Students/Create
         public ActionResult Create()
         {
-            return View();
+            var exercises = GetExercises().Select(e => new SelectListItem
+            {
+                Text = e.Name,
+                Value = e.Id.ToString()
+            }).ToList();
+
+            var cohorts = GetAllCohorts().Select(c => new SelectListItem
+             {
+                Text = c.Name,
+                Value = c.Id.ToString()
+             }).ToList();
+
+            cohorts.Insert(0, new SelectListItem
+            {
+                Text = "Choose Cohort...",
+                Value = "0"
+            });
+
+            var viewModel = new StudentViewModel
+            {
+                Student = new Student(),
+                Exercises = exercises,
+                Cohorts = cohorts
+            };
+            return View(viewModel);
         }
 
         // POST: Students/Create
@@ -248,6 +274,66 @@ namespace StudentExercisesMVC.Controllers
             catch
             {
                 return View();
+            }
+        }
+
+
+        //helper method to grab exercises list
+        private List<Exercise> GetExercises()
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT ID, Name, Language FROM Exercise";
+
+                    var reader = cmd.ExecuteReader();
+
+                    var exercises = new List<Exercise>();
+
+                    while (reader.Read())
+                    {
+                        exercises.Add(new Exercise
+                        {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            Name = reader.GetString(reader.GetOrdinal("Name")),
+                            Language = reader.GetString(reader.GetOrdinal("Language"))
+                        });
+                    }
+
+                    reader.Close();
+
+                    return exercises;
+                }
+            }
+        }
+
+        //helper method to grab all cohorts
+        private List<Cohort> GetAllCohorts()
+        {
+            using (SqlConnection conn = Connection)
+            {
+                conn.Open();
+                using (SqlCommand cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT Id, Name FROM Cohort";
+                    SqlDataReader reader = cmd.ExecuteReader();
+
+                    List<Cohort> cohorts = new List<Cohort>();
+                    while (reader.Read())
+                    {
+                        cohorts.Add(new Cohort
+                        {
+                            Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                            Name = reader.GetString(reader.GetOrdinal("Name")),
+                        });
+                    }
+
+                    reader.Close();
+
+                    return cohorts;
+                }
             }
         }
     }
